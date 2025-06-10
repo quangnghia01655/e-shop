@@ -1,0 +1,214 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script>{% extends 'base.html' %}
+{% block title %}Trang chủ{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Sản phẩm</h1>
+    <!-- Best Seller Section -->
+    <div class="mb-10">
+        <h2 class="text-2xl font-bold text-indigo-700 dark:text-indigo-300 mb-4 flex items-center">
+            <i class="fas fa-fire text-red-500 animate-pulse mr-2"></i>Bán chạy nhất
+        </h2>
+        <div id="best-seller-carousel" class="flex flex-wrap gap-6 justify-center animate-fade-in min-h-[260px]">
+            <!-- Sản phẩm bán chạy sẽ được render bằng JS -->
+        </div>
+        <script>
+        // Dữ liệu best_sellers từ server (luôn hợp lệ, luôn có tối đa 12 sản phẩm)
+        // Lưu ý: best_sellers phải là list các dict, không phải object Product!
+        // Flask: best_sellers = [p.to_dict() for p in best_sellers]
+        const bestSellers = JSON.parse('{{ best_sellers|tojson|safe }}');
+        const itemsPerSlide = 3;
+        const maxShow = 12;
+        let currentIndex = 0;
+
+        function renderBestSellers() {
+            const container = document.getElementById('best-seller-carousel');
+            container.innerHTML = '';
+            if (!bestSellers.length) {
+                const msg = document.createElement('div');
+                msg.className = 'text-gray-500 dark:text-gray-300 text-center w-full py-8';
+                msg.innerHTML = '<i class="fas fa-box-open text-2xl mr-2"></i>Chưa có sản phẩm bán chạy.';
+                container.appendChild(msg);
+                return;
+            }
+            const showCount = Math.min(itemsPerSlide, bestSellers.length, maxShow);
+            for (let i = 0; i < showCount; i++) {
+                const idx = (currentIndex + i) % Math.min(bestSellers.length, maxShow);
+                const product = bestSellers[idx];
+                const div = document.createElement('div');
+                div.className = "relative bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-60 hover-scale transition-transform duration-500 ease-in-out transform hover:scale-105 carousel-item";
+                div.style.opacity = 0;
+                div.style.transition = 'opacity 0.5s, transform 0.5s';
+                div.innerHTML = `
+                    <span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10 animate-pulse">#${idx+1}</span>
+                    <a href="/product/${product.id}">
+                        <img src="${product.image_url || 'https://via.placeholder.com/150'}" alt="${product.name}" class="w-full h-32 object-cover rounded mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 text-center">${product.name}</h3>
+                    </a>
+                    <p class="text-indigo-600 dark:text-indigo-400 font-bold text-center">${product.price} VNĐ</p>
+                `;
+                container.appendChild(div);
+                setTimeout(() => {
+                    div.style.opacity = 1;
+                    div.style.transform = 'translateY(0) scale(1)';
+                }, 10);
+            }
+            // Căn giữa các item
+            container.style.justifyContent = 'center';
+        }
+
+        renderBestSellers();
+        let carouselInterval = setInterval(() => {
+            // Hiệu ứng fade out trước khi chuyển slide
+            const items = document.querySelectorAll('#best-seller-carousel .carousel-item');
+            items.forEach(item => {
+                item.style.opacity = 0;
+                item.style.transform = 'translateY(20px) scale(0.95)';
+            });
+            setTimeout(() => {
+                currentIndex = (currentIndex + itemsPerSlide) % Math.min(bestSellers.length, maxShow);
+                renderBestSellers();
+            }, 400);
+        }, 3500);// Tự động chuyển slide sau 3.5 giây
+        </script>
+    </div>
+    <!-- Category Filter -->
+    <div class="mb-6">
+        <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-100 mb-2">Danh mục</h2>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('index') }}" 
+               class="px-4 py-2 rounded transition-colors duration-200 
+               {% if not request.args.get('category_id') %}
+                  bg-indigo-600 text-white hover:bg-indigo-700
+               {% else %}
+                  bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-300
+               {% endif %}">Tất cả</a>
+            {% for category in categories %}
+            <a href="{{ url_for('index', category_id=category.id) }}" 
+               class="px-4 py-2 rounded transition-colors duration-200 
+               {% if request.args.get('category_id')|int == category.id %}
+                  bg-indigo-600 text-white hover:bg-indigo-700
+               {% else %}
+                  bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-300
+               {% endif %}">{{ category.name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Product Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for product in products %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover-scale transition">
+            <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                <img src="{{ product.image_url or 'https://via.placeholder.com/150' }}" alt="{{ product.name }}" 
+                     class="w-full h-48 object-cover rounded mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ product.name }}</h3>
+            </a>
+            <p class="text-gray-600 dark:text-gray-300">{{ product.description | truncate(100) }}</p>
+            <p class="text-indigo-600 dark:text-indigo-400 font-bold mt-2">{{ product.price }} VNĐ</p>
+            <form id="add-to-cart-{{ product.id }}" method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                <div class="flex items-center mt-4">
+                    <input type="number" name="quantity" value="1" min="1" 
+                           class="w-16 p-1 border rounded dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500">
+                    <button type="submit" 
+                            class="ml-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-700">
+                        <i class="fas fa-cart-plus mr-1"></i> Thêm vào giỏ
+                    </button>
+                </div>
+            </form>
+            <script>
+                document.getElementById('add-to-cart-{{ product.id }}').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    try {
+                        const response = await fetch(e.target.action, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+                        console.log('[E-Shop] Add to cart response:', data);
+                        showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                        if (data.status === 'success' && data.cart_count !== undefined) {
+                            updateCartCount(data.cart_count);
+                        }
+                        if (data.redirect) {
+                            setTimeout(() => window.location.href = data.redirect, 1000);
+                        }
+                    } catch (error) {
+                        console.error('[E-Shop Error] Add to cart failed:', error);
+                        showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi thêm vào giỏ hàng', false);
+                    }
+                });
+            </script>
+        </div>
+        {% endfor %}
+    </div>
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex justify-center mt-8">
+        <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            {% if page > 1 %}
+            <a href="{{ url_for('index', page=page-1, category_id=category_id) }}" class="px-3 py-2 rounded-l-md border border-gray-300 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-indigo-100">&laquo; Trước</a>
+            {% else %}
+            <span class="px-3 py-2 rounded-l-md border border-gray-300 bg-gray-200 text-gray-400 cursor-not-allowed">&laquo; Trước</span>
+            {% endif %}
+            {% for p in range(1, total_pages+1) %}
+                {% if p == page %}
+                <span class="px-3 py-2 border-t border-b border-gray-300 bg-indigo-600 text-white">{{ p }}</span>
+                {% else %}
+                <a href="{{ url_for('index', page=p, category_id=category_id) }}" class="px-3 py-2 border border-gray-300 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-indigo-100">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page < total_pages %}
+            <a href="{{ url_for('index', page=page+1, category_id=category_id) }}" class="px-3 py-2 rounded-r-md border border-gray-300 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-indigo-100">Sau &raquo;</a>
+            {% else %}
+            <span class="px-3 py-2 rounded-r-md border border-gray-300 bg-gray-200 text-gray-400 cursor-not-allowed">Sau &raquo;</span>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('[E-Shop] Index loaded, showNotificationModal:', typeof showNotificationModal);
+        console.log('[E-Shop] Index loaded, updateCartCount:', typeof updateCartCount);
+    });
+</script>
+{% endblock %}
