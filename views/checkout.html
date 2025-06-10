@@ -1,0 +1,107 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script>{% extends 'base.html' %}
+{% block title %}Thanh toán{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Thanh toán</h1>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Order Summary -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Tóm tắt đơn hàng</h2>
+            {% for item in products %}
+            <div class="flex justify-between mb-2">
+                <span class="text-gray-600 dark:text-gray-400">{{ item.product.name }} x {{ item.quantity }}</span>
+                <span class="text-gray-600 dark:text-gray-400">{{ (item.product.price * item.quantity) }} VNĐ</span>
+            </div>
+            {% endfor %}
+            <div class="border-t dark:border-gray-700 pt-4 mt-4">
+                <div class="flex justify-between">
+                    <span class="text-gray-800 dark:text-gray-200 font-bold">Tổng cộng</span>
+                    <span class="text-gray-800 dark:text-gray-200 font-bold">{{ total }} VNĐ</span>
+                </div>
+            </div>
+        </div>
+        <!-- Checkout Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Thông tin thanh toán</h2>
+            <form id="checkout-form" method="POST" action="{{ url_for('checkout') }}">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Họ và tên</label>
+                    <input type="text" name="name" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Địa chỉ giao hàng</label>
+                    <input type="text" name="shipping_address" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Phương thức thanh toán</label>
+                    <select name="payment_method" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                        <option value="cod">Thanh toán khi nhận hàng</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:hover:bg-indigo-500">
+                    Đặt hàng
+                </button>
+            </form>
+            <script>
+                document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    try {
+                        const response = await fetch(e.target.action, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+                        showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                        if (data.redirect) {
+                            setTimeout(() => window.location.href = data.redirect, 1000);
+                        }
+                    } catch (error) {
+                        console.error('[E-Shop Error] Checkout failed', error);
+                        showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi đặt hàng', false);
+                    }
+                });
+            </script>
+        </div>
+    </div>
+</div>
+{% endblock %}
