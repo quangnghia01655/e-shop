@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block title %}Quản lý người dùng{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center">
+        <i class="fas fa-users-cog text-indigo-600 mr-3"></i>Quản lý người dùng
+    </h1>
+    <div class="mb-6">
+        <button id="btn-add-user" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            <i class="fas fa-user-plus mr-1"></i> Thêm người dùng
+        </button>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+            <thead>
+                <tr class="bg-gray-100 dark:bg-gray-700">
+                    <th class="py-3 px-4 border-b text-center">ID</th>
+                    <th class="py-3 px-4 border-b text-center">Tên</th>
+                    <th class="py-3 px-4 border-b text-center">Email</th>
+                    <th class="py-3 px-4 border-b text-center">Quyền</th>
+                    <th class="py-3 px-4 border-b text-center">Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="user-table-body">
+                <!-- Dữ liệu người dùng sẽ được render ở đây bằng JS -->
+            </tbody>
+        </table>
+    </div>
+    <!-- Modal Thêm/Sửa Người Dùng -->
+    <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md shadow-lg relative">
+            <button id="close-modal" class="absolute top-2 right-2 text-gray-500 hover:text-red-500">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 id="modal-title" class="text-xl font-bold mb-4">Thêm người dùng</h2>
+            <form id="user-form">
+                <input type="hidden" name="user_id" id="user_id">
+                <div class="mb-4">
+                    <label for="name" class="block text-gray-700 dark:text-gray-200 mb-1">Tên</label>
+                    <input type="text" id="name" name="name" class="w-full p-2 border rounded dark:bg-gray-800 dark:text-gray-100" required>
+                </div>
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 dark:text-gray-200 mb-1">Email</label>
+                    <input type="email" id="email" name="email" class="w-full p-2 border rounded dark:bg-gray-800 dark:text-gray-100" required>
+                </div>
+                <div class="mb-4">
+                    <label for="role" class="block text-gray-700 dark:text-gray-200 mb-1">Quyền</label>
+                    <select id="role" name="role" class="w-full p-2 border rounded dark:bg-gray-800 dark:text-gray-100">
+                        <option value="user">Người dùng</option>
+                        <option value="seller">Người bán</option>
+                        <option value="admin">Quản trị viên</option>
+                    </select>
+                </div>
+                <div class="mb-4" id="password-field">
+                    <label for="password" class="block text-gray-700 dark:text-gray-200 mb-1">Mật khẩu</label>
+                    <input type="password" id="password" name="password" class="w-full p-2 border rounded dark:bg-gray-800 dark:text-gray-100">
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+function getRoleText(user) {
+    if (user.is_admin) return 'Quản trị viên';
+    if (user.is_seller) return 'Người bán';
+    return 'Người dùng';
+}
+function getRoleValue(user) {
+    if (user.is_admin) return 'admin';
+    if (user.is_seller) return 'seller';
+    return 'user';
+}
+async function loadUsers() {
+    const res = await fetch('/admin/api/users');
+    const data = await res.json();
+    const tbody = document.getElementById('user-table-body');
+    tbody.innerHTML = '';
+    if (data.status === 'success') {
+        data.users.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-indigo-50 dark:hover:bg-gray-700 transition';
+            tr.innerHTML = `
+                <td class="py-3 px-4 border-b text-center align-middle">${user.id}</td>
+                <td class="py-3 px-4 border-b text-center align-middle">${user.name}</td>
+                <td class="py-3 px-4 border-b text-center align-middle">${user.email}</td>
+                <td class="py-3 px-4 border-b text-center align-middle">${getRoleText(user)}</td>
+                <td class="py-3 px-4 border-b text-center align-middle">
+                    <button class="text-blue-600 hover:text-blue-800 mr-2 btn-edit" data-id="${user.id}"><i class="fas fa-edit"></i></button>
+                    <button class="text-red-600 hover:text-red-800 btn-delete" data-id="${user.id}"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    // Gán sự kiện edit/xóa
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.onclick = async function() {
+            const id = this.dataset.id;
+            const user = data.users.find(u => u.id == id);
+            document.getElementById('user_id').value = user.id;
+            document.getElementById('name').value = user.name;
+            document.getElementById('email').value = user.email;
+            document.getElementById('role').value = getRoleValue(user);
+            document.getElementById('password').value = '';
+            document.getElementById('modal-title').innerText = 'Sửa người dùng';
+            document.getElementById('password-field').style.display = 'block';
+            document.getElementById('user-modal').classList.remove('hidden');
+        };
+    });
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.onclick = async function() {
+            if (!confirm('Bạn có chắc muốn xóa người dùng này?')) return;
+            const id = this.dataset.id;
+            const res = await fetch(`/admin/api/users/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            alert(data.message);
+            loadUsers();
+        };
+    });
+}
+document.getElementById('btn-add-user').onclick = function() {
+    document.getElementById('user-form').reset();
+    document.getElementById('user_id').value = '';
+    document.getElementById('modal-title').innerText = 'Thêm người dùng';
+    document.getElementById('password-field').style.display = 'block';
+    document.getElementById('user-modal').classList.remove('hidden');
+};
+document.getElementById('close-modal').onclick = function() {
+    document.getElementById('user-modal').classList.add('hidden');
+};
+document.getElementById('user-form').onsubmit = async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('user_id').value;
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const role = document.getElementById('role').value;
+    const password = document.getElementById('password').value;
+    let url = '/admin/api/users', method = 'POST', body;
+    if (id) {
+        url = `/admin/api/users/${id}`;
+        body = JSON.stringify({ name, email, role, password });
+    } else {
+        body = JSON.stringify({ name, email, role, password });
+    }
+    const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body
+    });
+    const data = await res.json();
+    alert(data.message);
+    document.getElementById('user-modal').classList.add('hidden');
+    loadUsers();
+};
+window.onload = loadUsers;
+</script>
+{% endblock %}

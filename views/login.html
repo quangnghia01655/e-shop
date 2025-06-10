@@ -1,0 +1,127 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+        return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON data back to CSV
+                var csv = XLSX.utils.aoa_to_csv(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+    }
+</script>
+{% extends 'base.html' %}
+{% block title %}Đăng nhập{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-md">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Đăng nhập</h1>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <form id="login-form" method="POST" action="{{ url_for('login') }}">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Email</label>
+                <input type="email" name="email" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Mật khẩu</label>
+                <input type="password" name="password" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:hover:bg-indigo-500">
+                Đăng nhập
+            </button>
+        </form>
+        <p class="mt-4 text-gray-600 dark:text-gray-400 text-center">
+            Chưa có tài khoản? <a href="{{ url_for('register') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Đăng ký</a>
+        </p>
+        <script>
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const emailInput = e.target.elements['email'];
+                try {
+                    const response = await fetch(e.target.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                    if (data.redirect) {
+                        setTimeout(() => window.location.href = data.redirect, 1000);
+                    } else if (data.status === 'error' && data.email) {
+                        // Nếu backend trả về email, giữ lại giá trị email
+                        emailInput.value = data.email;
+                    }
+                } catch (error) {
+                    showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi đăng nhập', 'error');
+                }
+            });
+        </script>
+    </div>
+</div>
+{% endblock %}
