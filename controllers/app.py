@@ -94,30 +94,31 @@ def index():
         # Lấy sản phẩm bán chạy nhất (carousel)
         best_sellers = []
         try:
-            products = Product.query.all()
+            # Sử dụng biến all_products để tránh ghi đè biến products đã phân trang
+            all_products = Product.query.all()
             best_sellers = []
-            if products:
-                purchased_list = [p.total_purchased for p in products]
+            if all_products:
+                purchased_list = [p.total_purchased for p in all_products]
                 max_purchased = max(purchased_list)
                 min_purchased = min(purchased_list)
                 import random
                 if max_purchased == min_purchased:
                     # Nếu tất cả sản phẩm có số lượng mua bằng nhau (kể cả 0), lấy random 12 sản phẩm
-                    best_sellers = random.sample(products, min(12, len(products)))
+                    best_sellers = random.sample(all_products, min(12, len(all_products)))
                 else:
                     # Sắp xếp giảm dần theo số lượng mua
-                    sorted_products = sorted(products, key=lambda p: p.total_purchased, reverse=True)
+                    sorted_products = sorted(all_products, key=lambda p: p.total_purchased, reverse=True)
                     ranked = [p for p in sorted_products if p.total_purchased > min_purchased]
                     if len(ranked) < 12:
-                        others = [p for p in products if p not in ranked]
+                        others = [p for p in all_products if p not in ranked]
                         random.shuffle(others)
                         best_sellers = ranked + others[:12-len(ranked)]
                     else:
                         best_sellers = ranked[:12]
-            # Nếu vẫn không có sản phẩm nào (products rỗng hoặc best_sellers rỗng), lấy random tối đa 12 sản phẩm bất kỳ
-            if not best_sellers and products:
+            # Nếu vẫn không có sản phẩm nào (all_products rỗng hoặc best_sellers rỗng), lấy random tối đa 12 sản phẩm bất kỳ
+            if not best_sellers and all_products:
                 import random
-                best_sellers = random.sample(products, min(12, len(products)))
+                best_sellers = random.sample(all_products, min(12, len(all_products)))
             best_sellers = [p.to_dict() for p in best_sellers]
         except Exception as e:
             app.logger.warning(f'Lỗi lấy sản phẩm bán chạy: {e}')
