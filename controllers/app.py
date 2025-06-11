@@ -565,7 +565,7 @@ def add_product():
         db.session.commit()
         create_notification(user.id, f"Bạn đã thêm sản phẩm mới: {name}.")
         app.logger.info(f'Thêm sản phẩm thành công: {name}, seller_id: {seller.id}')
-        return jsonify({'status': 'success', 'message': 'Thêm sản phẩm thành công'})
+        return jsonify({'status': 'success', 'message': 'Thêm sản phẩm thành công', 'redirect': url_for('seller_dashboard') + '?success=true&action=add'})
     categories = Category.query.all()
     app.logger.info(f'Truy cập trang thêm sản phẩm, user_id: {user.id}')
     return render_template('add_product.html', categories=categories, 
@@ -644,7 +644,7 @@ def edit_product(product_id):
         db.session.commit()
         create_notification(user.id, f"Bạn đã cập nhật sản phẩm: {name}.")
         app.logger.info(f'Cập nhật sản phẩm thành công: product_id: {product_id}')
-        return jsonify({'status': 'success', 'message': 'Cập nhật sản phẩm thành công'})
+        return jsonify({'status': 'success', 'message': 'Cập nhật sản phẩm thành công', 'redirect': url_for('seller_dashboard') + '?success=true&action=edit'})
     categories = Category.query.all()
     app.logger.info(f'Truy cập trang sửa sản phẩm, product_id: {product_id}, user_id: {user.id}')
     return render_template('edit_product.html', product=product, categories=categories, 
@@ -673,7 +673,7 @@ def delete_product(product_id):
     db.session.commit()
     create_notification(user.id, f"Bạn đã xóa sản phẩm: {product.name}.")
     app.logger.info(f'Xóa sản phẩm thành công: product_id: {product_id}')
-    return jsonify({'status': 'success', 'message': 'Đã xóa sản phẩm thành công'})
+    return jsonify({'status': 'success', 'message': 'Đã xóa sản phẩm thành công', 'redirect': url_for('seller_dashboard') + '?success=true&action=delete'})
 
 @app.route('/orders')
 @login_required()
