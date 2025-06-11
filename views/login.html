@@ -1,0 +1,49 @@
+
+{% extends 'base.html' %}
+{% block title %}Đăng nhập{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-md">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Đăng nhập</h1>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <form id="login-form" method="POST" action="{{ url_for('login') }}">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Email</label>
+                <input type="email" name="email" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Mật khẩu</label>
+                <input type="password" name="password" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:hover:bg-indigo-500">
+                Đăng nhập
+            </button>
+        </form>
+        <p class="mt-4 text-gray-600 dark:text-gray-400 text-center">
+            Chưa có tài khoản? <a href="{{ url_for('register') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Đăng ký</a>
+        </p>
+        <script>
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const emailInput = e.target.elements['email'];
+                try {
+                    const response = await fetch(e.target.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                    if (data.redirect) {
+                        setTimeout(() => window.location.href = data.redirect, 1000);
+                    } else if (data.status === 'error' && data.email) {
+                        // Nếu backend trả về email, giữ lại giá trị email
+                        emailInput.value = data.email;
+                    }
+                } catch (error) {
+                    showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi đăng nhập', 'error');
+                }
+            });
+        </script>
+    </div>
+</div>
+{% endblock %}

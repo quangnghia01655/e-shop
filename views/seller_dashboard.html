@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Cửa hàng{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Quản lý cửa hàng</h1>
+    <div class="mb-6">
+        <a href="{{ url_for('add_product') }}" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:hover:bg-indigo-500">
+            <i class="fas fa-plus mr-1"></i> Thêm sản phẩm
+        </a>
+    </div>
+    {% if products %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <table class="w-full">
+            <thead>
+                <tr class="text-left text-gray-700 dark:text-gray-200">
+                    <th class="pb-4">Sản phẩm</th>
+                    <th class="pb-4">Giá</th>
+                    <th class="pb-4">Danh mục</th>
+                    <th class="pb-4">Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="border-t dark:border-gray-700">
+                    <td class="py-4">
+                        <div class="flex items-center">
+                            <img src="{{ product.image_url or 'https://via.placeholder.com/50' }}" alt="{{ product.name }}" class="w-12 h-12 object-cover rounded mr-4">
+                            <span class="text-gray-800 dark:text-gray-200">{{ product.name }}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 text-gray-600 dark:text-gray-400">{{ product.price }} VNĐ</td>
+                    <td class="py-4 text-gray-600 dark:text-gray-400">{{ product.category.name }}</td>
+                    <td class="py-4">
+                        <a href="{{ url_for('edit_product', product_id=product.id) }}" class="text-blue-600 dark:text-blue-400 hover:underline mr-4">
+                            <i class="fas fa-edit"></i> Sửa
+                        </a>
+                        <form id="delete-product-{{ product.id }}" method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" class="inline">
+                            <button type="submit" class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i> Xóa
+                            </button>
+                        </form>
+                        <script>
+                            document.getElementById('delete-product-{{ product.id }}').addEventListener('submit', async (e) => {
+                                e.preventDefault();
+                                if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
+                                    return;
+                                }
+                                try {
+                                    const response = await fetch(e.target.action, {
+                                        method: 'POST'
+                                    });
+                                    const data = await response.json();
+                                    if (data.status === 'success') {
+                                        if (data.redirect) {
+                                            window.location.href = data.redirect;
+                                        } else {
+                                            location.reload();
+                                        }
+                                    } else {
+                                        showNotificationModal('Lỗi', data.message, false);
+                                    }
+                                } catch (error) {
+                                    console.error('[E-Shop Error] Delete product failed', error);
+                                    showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi xóa sản phẩm', false);
+                                }
+                            });
+                        </script>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-gray-600 dark:text-gray-400">Chưa có sản phẩm nào.</p>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Kiểm tra URL parameters để hiển thị thông báo thành công
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const action = urlParams.get('action');
+    
+    if (success === 'true' && action) {
+        let message = '';
+        switch(action) {
+            case 'add':
+                message = 'Thêm sản phẩm thành công!';
+                break;
+            case 'edit':
+                message = 'Cập nhật sản phẩm thành công!';
+                break;
+            case 'delete':
+                message = 'Xóa sản phẩm thành công!';
+                break;
+            default:
+                message = 'Thao tác thành công!';
+        }
+        
+        // Hiển thị modal thông báo thành công
+        showNotificationModal('Thành công', message, true, () => {
+            // Callback khi đóng modal - xóa params khỏi URL
+            const url = new URL(window.location);
+            url.searchParams.delete('success');
+            url.searchParams.delete('action');
+            window.history.replaceState({}, document.title, url.pathname);
+        });
+    }
+});
+</script>
+
+{% endblock %}

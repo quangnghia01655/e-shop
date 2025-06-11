@@ -1,0 +1,367 @@
+{% extends 'base.html' %}
+{% block title %}Trang chủ{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Sản phẩm</h1>
+    <!-- Best Seller Section -->
+    <div class="mb-10">
+        <h2 class="text-2xl font-bold text-indigo-700 dark:text-indigo-300 mb-4 flex items-center">
+            <i class="fas fa-fire text-red-500 animate-pulse mr-2"></i>Bán chạy nhất
+        </h2>
+        <div id="best-seller-carousel" class="flex flex-wrap gap-6 justify-center animate-fade-in min-h-[260px] relative">
+            <!-- Sản phẩm bán chạy sẽ được render bằng JS -->
+            <!-- Indicator và nút sẽ được render bằng JS -->
+        </div>
+        <script>
+        // Dữ liệu best_sellers từ server (luôn hợp lệ, luôn có tối đa 12 sản phẩm)
+        // Flask: best_sellers = [p.to_dict() for p in best_sellers]
+        const bestSellers = JSON.parse('{{ best_sellers|tojson|safe }}');
+        // DEBUG LOG: Kiểm tra dữ liệu đầu vào từ server
+        try {
+            console.log('[DEBUG] bestSellers từ server:', bestSellers);
+            if (!Array.isArray(bestSellers)) {
+                console.error('[ERROR] bestSellers không phải là mảng:', bestSellers);
+            } else if (bestSellers.length === 0) {
+                console.warn('[WARN] bestSellers là mảng rỗng!');
+            } else {
+                for (let i = 0; i < bestSellers.length; i++) {
+                    if (!bestSellers[i] || typeof bestSellers[i] !== 'object') {
+                        console.error(`[ERROR] bestSellers[${i}] không hợp lệ:`, bestSellers[i]);
+                    } else {
+                        // Kiểm tra các thuộc tính quan trọng
+                        if (!('id' in bestSellers[i])) console.error(`[ERROR] Sản phẩm thiếu id:`, bestSellers[i]);
+                        if (!('name' in bestSellers[i])) console.error(`[ERROR] Sản phẩm thiếu name:`, bestSellers[i]);
+                        if (!('price' in bestSellers[i])) console.error(`[ERROR] Sản phẩm thiếu price:`, bestSellers[i]);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[FATAL] Lỗi khi kiểm tra dữ liệu bestSellers:', err);
+        }
+        // Responsive: xác định số sản phẩm trên 1 slide theo kích thước màn hình
+        function getItemsPerSlide() {
+            if (window.innerWidth < 640) return 1; // mobile
+            if (window.innerWidth < 1024) return 2; // tablet
+            if (window.innerWidth < 1280) return 3; // laptop
+            return 4; // desktop lớn
+        }
+        // Luôn lấy bestSellers từ server, không random lại ở client
+        let sortedBestSellers = bestSellers;
+        const totalShow = Math.min(sortedBestSellers.length, 12);
+        let itemsPerSlide = getItemsPerSlide();
+        let currentIndex = 0;
+        let carouselInterval = null;
+
+        function getSlideCount() {
+            // Số slide = làm tròn lên 12/itemsPerSlide (luôn đủ 12 sp)
+            return Math.ceil(12 / itemsPerSlide);
+        }
+
+        function renderIndicators(activeIdx) {
+            const container = document.getElementById('best-seller-carousel');
+            let indicator = document.getElementById('carousel-indicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'carousel-indicator';
+                indicator.className = 'flex justify-center gap-2 mt-4 absolute left-0 right-0 bottom-2 z-20';
+                container.appendChild(indicator);
+            }
+            indicator.innerHTML = '';
+            const slideCount = getSlideCount();
+            for (let i = 0; i < slideCount; i++) {
+                const dot = document.createElement('button');
+                dot.className = `w-3 h-3 rounded-full border-2 border-indigo-400 transition-all duration-200 focus:outline-none ${i === activeIdx ? 'bg-indigo-600 dark:bg-indigo-300 scale-150 shadow-lg' : 'bg-white dark:bg-gray-700'}`;
+                dot.setAttribute('aria-label', `Chuyển đến slide ${i+1}`);
+                dot.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.innerWidth >= 768) {
+                        goToSlide(i);
+                    }
+                });
+                indicator.appendChild(dot);
+            }
+            indicator.style.display = (window.innerWidth >= 768) ? 'flex' : 'none';
+        }
+
+        function renderNavButtons() {
+            const container = document.getElementById('best-seller-carousel');
+            let leftBtn = document.getElementById('carousel-left-btn');
+            let rightBtn = document.getElementById('carousel-right-btn');
+            if (!leftBtn) {
+                leftBtn = document.createElement('button');
+                leftBtn.id = 'carousel-left-btn';
+                leftBtn.className = 'absolute left-2 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full w-9 h-9 flex items-center justify-center shadow z-20 md:hidden';
+                leftBtn.innerHTML = '<i class="fas fa-chevron-left text-indigo-600 dark:text-indigo-300"></i>';
+                leftBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    goToSlide((getCurrentSlideIdx() - 1 + getSlideCount()) % getSlideCount(), true);
+                });
+                container.appendChild(leftBtn);
+            }
+            if (!rightBtn) {
+                rightBtn = document.createElement('button');
+                rightBtn.id = 'carousel-right-btn';
+                rightBtn.className = 'absolute right-2 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full w-9 h-9 flex items-center justify-center shadow z-20 md:hidden';
+                rightBtn.innerHTML = '<i class="fas fa-chevron-right text-indigo-600 dark:text-indigo-300"></i>';
+                rightBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    goToSlide((getCurrentSlideIdx() + 1) % getSlideCount(), true);
+                });
+                container.appendChild(rightBtn);
+            }
+            // Chỉ hiện trên mobile
+            leftBtn.style.display = rightBtn.style.display = (window.innerWidth < 768) ? 'flex' : 'none';
+        }
+
+        function renderBestSellers(direction = 1, animate = false) {
+            const container = document.getElementById('best-seller-carousel');
+            container.innerHTML = '';
+            if (!sortedBestSellers.length) {
+                const msg = document.createElement('div');
+                msg.className = 'text-gray-500 dark:text-gray-300 text-center w-full py-8';
+                msg.innerHTML = '<i class="fas fa-box-open text-2xl mr-2"></i>Chưa có sản phẩm bán chạy.';
+                container.appendChild(msg);
+                return;
+            }
+            itemsPerSlide = getItemsPerSlide();
+            // Luôn show đúng 12 sản phẩm, không lặp lại slide cuối
+            const showCount = Math.min(itemsPerSlide, sortedBestSellers.length - currentIndex);
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            wrapper.style.width = `${showCount * 260}px`;
+            wrapper.style.height = '260px';
+            wrapper.style.overflow = 'hidden';
+            wrapper.className = 'flex justify-center items-center w-full';
+            container.appendChild(wrapper);
+            for (let i = 0; i < showCount; i++) {
+                const idx = currentIndex + i;
+                if (idx >= sortedBestSellers.length) break;
+                const product = sortedBestSellers[idx];
+                const div = document.createElement('div');
+                div.className = "relative bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-60 hover-scale transition-transform duration-500 ease-in-out carousel-item";
+                div.style.position = 'absolute';
+                div.style.left = `${i * 260}px`;
+                div.style.top = '0';
+                div.style.width = '240px';
+                div.style.height = '100%';
+                div.style.opacity = 1;
+                div.style.transform = 'translateX(0)';
+                div.innerHTML = `
+                    <span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-10 animate-pulse">#${idx+1}</span>
+                    <a href="/product/${product.id}">
+                        <img src="${product.image_url || 'https://via.placeholder.com/150'}" alt="${product.name}" class="w-full h-32 object-cover rounded mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 text-center">${product.name}</h3>
+                    </a>
+                    <p class="text-indigo-600 dark:text-indigo-400 font-bold text-center">${product.price} VNĐ</p>
+                `;
+                wrapper.appendChild(div);
+            }
+            renderIndicators(getCurrentSlideIdx());
+            renderNavButtons();
+            if (animate) {
+                animateBestSellers(1, 1, () => {
+                    currentIndex = (currentIndex + itemsPerSlide) % sortedBestSellers.length;
+                    renderBestSellers(1, false);
+                });
+            }
+        }
+
+        function getCurrentSlideIdx() {
+            return Math.floor(currentIndex / itemsPerSlide);
+        }
+
+        function goToSlide(slideIdx, animate = true) {
+            const slideCount = getSlideCount();
+            if (slideIdx < 0 || slideIdx >= slideCount) return;
+            const newIndex = slideIdx * itemsPerSlide;
+            if (newIndex === currentIndex) return;
+            const direction = (newIndex > currentIndex) ? 1 : -1;
+            animateBestSellers(direction, Math.abs(newIndex - currentIndex), () => {
+                currentIndex = newIndex;
+                renderBestSellers(1, false);
+            });
+            resetCarouselInterval();
+        }
+
+        function autoNextSlide() {
+            const slideCount = getSlideCount();
+            const nextSlideIdx = (getCurrentSlideIdx() + 1) % slideCount;
+            goToSlide(nextSlideIdx, true);
+        }
+
+        function resetCarouselInterval() {
+            if (carouselInterval) clearInterval(carouselInterval);
+            carouselInterval = setInterval(() => {
+                autoNextSlide();
+            }, 3500);
+        }
+
+        function animateBestSellers(direction = 1, step = 1, onDone) {
+            const container = document.getElementById('best-seller-carousel');
+            const wrapper = container.querySelector('div');
+            if (!wrapper) return;
+            const items = wrapper.children;
+            let progress = 0;
+            const duration = 800; // tổng thời gian hiệu ứng
+            let lastTime = null;
+            // Fade out all items
+            for (let i = 0; i < items.length; i++) {
+                items[i].style.transition = 'opacity 0.3s, transform 0.8s'; // opacity nhanh hơn, transform vẫn chậm
+                items[i].style.opacity = 1;
+                items[i].style.transform = 'translateX(0)';
+            }
+            function fadeOutStep(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                progress += timestamp - lastTime;
+                lastTime = timestamp;
+                const percent = Math.min(progress / duration, 1);
+                // Opacity giảm nhanh hơn (hết trong 0.3s)
+                const opacityPercent = Math.min(progress / 300, 1);
+                // Di chuyển xa hơn (tăng từ 40px lên 120px)
+                const movePx = 120;
+                for (let i = 0; i < items.length; i++) {
+                    items[i].style.opacity = 1 - opacityPercent;
+                    items[i].style.transform = `translateX(${-percent * movePx * direction}px)`;
+                }
+                if (percent < 1) {
+                    requestAnimationFrame(fadeOutStep);
+                } else {
+                    // After fade out, call onDone to render new slide, then fade in
+                    if (typeof onDone === 'function') onDone();
+                    setTimeout(() => {
+                        const newWrapper = container.querySelector('div');
+                        if (!newWrapper) return;
+                        const newItems = newWrapper.children;
+                        for (let i = 0; i < newItems.length; i++) {
+                            newItems[i].style.opacity = 0;
+                            newItems[i].style.transform = `translateX(${movePx * direction}px)`;
+                            newItems[i].style.transition = 'opacity 0.3s, transform 0.8s';
+                        }
+                        let fadeInProgress = 0;
+                        let fadeInLast = null;
+                        function fadeInStep(ts) {
+                            if (!fadeInLast) fadeInLast = ts;
+                            fadeInProgress += ts - fadeInLast;
+                            fadeInLast = ts;
+                            const fadePercent = Math.min(fadeInProgress / duration, 1);
+                            // Opacity tăng nhanh hơn (0.3s)
+                            const opacityInPercent = Math.min(fadeInProgress / 300, 1);
+                            for (let i = 0; i < newItems.length; i++) {
+                                newItems[i].style.opacity = opacityInPercent;
+                                newItems[i].style.transform = `translateX(${(1-fadePercent) * movePx * direction}px)`;
+                            }
+                            if (fadePercent < 1) {
+                                requestAnimationFrame(fadeInStep);
+                            }
+                        }
+                        requestAnimationFrame(fadeInStep);
+                    }, 10);
+                }
+            }
+            requestAnimationFrame(fadeOutStep);
+        }
+
+        window.addEventListener('resize', () => {
+            const oldItemsPerSlide = itemsPerSlide;
+            itemsPerSlide = getItemsPerSlide();
+            // Đảm bảo currentIndex không bị lệch slide khi thay đổi số lượng
+            currentIndex = Math.floor(currentIndex / oldItemsPerSlide) * itemsPerSlide;
+            renderBestSellers(1, false);
+        });
+
+        renderBestSellers();
+        resetCarouselInterval();
+        </script>
+    </div>
+    <!-- Category Filter -->
+    <div class="mb-6">
+    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-100 mb-2">Danh mục</h2>
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ url_for('index') }}"
+           class="px-4 py-2 rounded transition-colors duration-200 {% if not request.args.get('category_id') %}bg-indigo-600 text-white dark:bg-indigo-400 dark:text-gray-900{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 category-btn-dark{% endif %}">Tất cả</a>
+        {% for category in categories %}
+        <a href="{{ url_for('index', category_id=category.id) }}"
+           class="px-4 py-2 rounded transition-colors duration-200 {% if request.args.get('category_id')|int == category.id %}bg-indigo-600 text-white dark:bg-indigo-400 dark:text-gray-900{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 category-btn-dark{% endif %}">{{ category.name }}</a>
+        {% endfor %}
+    </div>
+</div>
+    <!-- Product Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for product in products %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover-scale transition">
+            <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                <img src="{{ product.image_url or 'https://via.placeholder.com/150' }}" alt="{{ product.name }}" 
+                     class="w-full h-48 object-cover rounded mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ product.name }}</h3>
+            </a>
+            <p class="text-gray-600 dark:text-gray-300">{{ product.description | truncate(100) }}</p>
+            <p class="text-indigo-600 dark:text-indigo-400 font-bold mt-2">{{ product.price }} VNĐ</p>
+            <form id="add-to-cart-{{ product.id }}" method="POST" action="{{ url_for('add_to_cart', product_id=product.id) }}">
+                <div class="flex items-center mt-4">
+                    <input type="number" name="quantity" value="1" min="1" 
+                           class="w-16 p-1 border rounded dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500">
+                    <button type="submit" 
+                            class="ml-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-700">
+                        <i class="fas fa-cart-plus mr-1"></i> Thêm vào giỏ
+                    </button>
+                </div>
+            </form>
+            <script>
+                document.getElementById('add-to-cart-{{ product.id }}').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    try {
+                        const response = await fetch(e.target.action, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+                        console.log('[E-Shop] Add to cart response:', data);
+                        showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                        if (data.status === 'success' && data.cart_count !== undefined) {
+                            updateCartCount(data.cart_count);
+                        }
+                        if (data.redirect) {
+                            setTimeout(() => window.location.href = data.redirect, 1000);
+                        }
+                    } catch (error) {
+                        console.error('[E-Shop Error] Add to cart failed:', error);
+                        showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi thêm vào giỏ hàng', false);
+                    }
+                });
+            </script>
+        </div>
+        {% endfor %}
+    </div>
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex justify-center mt-8">
+        <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            {% if page > 1 %}
+            <a href="{{ url_for('index', page=page-1, category_id=category_id, q=q) }}" class="px-3 py-2 rounded-l-md border border-gray-300 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-indigo-100">&laquo; Trước</a>
+            {% else %}
+            <span class="px-3 py-2 rounded-l-md border border-gray-300 bg-gray-200 text-gray-400 cursor-not-allowed">&laquo; Trước</span>
+            {% endif %}
+            {% for p in range(1, total_pages+1) %}
+                {% if p == page %}
+                <span class="px-3 py-2 border-t border-b border-gray-300 bg-indigo-600 text-white">{{ p }}</span>
+                {% else %}
+                <a href="{{ url_for('index', page=p, category_id=category_id, q=q) }}" class="px-3 py-2 border border-gray-300 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-indigo-100">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page < total_pages %}
+            <a href="{{ url_for('index', page=page+1, category_id=category_id, q=q) }}" class="px-3 py-2 rounded-r-md border border-gray-300 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-indigo-100">Sau &raquo;</a>
+            {% else %}
+            <span class="px-3 py-2 rounded-r-md border border-gray-300 bg-gray-200 text-gray-400 cursor-not-allowed">Sau &raquo;</span>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('[E-Shop] Index loaded, showNotificationModal:', typeof showNotificationModal);
+        console.log('[E-Shop] Index loaded, updateCartCount:', typeof updateCartCount);
+    });
+</script>
+{% endblock %}

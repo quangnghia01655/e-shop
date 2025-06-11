@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Đăng ký người bán{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-md">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Đăng ký người bán</h1>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <form id="register-seller-form" method="POST" action="{{ url_for('register_seller') }}">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Họ và tên</label>
+                <input type="text" name="name" value="{{ user.name }}" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Email</label>
+                <input type="email" name="email" value="{{ user.email }}" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Số điện thoại</label>
+                <input type="text" name="phone" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Tên cửa hàng</label>
+                <input type="text" name="shop_name" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Mật khẩu</label>
+                <input type="password" name="password" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:hover:bg-indigo-500">
+                Đăng ký
+            </button>
+        </form>
+        <script>
+            document.getElementById('register-seller-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                try {
+                    const response = await fetch(e.target.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                    if (data.redirect) {
+                        setTimeout(() => window.location.href = data.redirect, 1000);
+                    }
+                } catch (error) {
+                    console.error('[E-Shop Error] Seller registration failed', error);
+                    showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi đăng ký người bán', false);
+                }
+            });
+        </script>
+    </div>
+</div>
+{% endblock %}

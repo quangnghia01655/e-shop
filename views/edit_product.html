@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Sửa sản phẩm{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-md">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Sửa sản phẩm</h1>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <form id="edit-product-form" method="POST" action="{{ url_for('edit_product', product_id=product.id) }}">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Tên sản phẩm</label>
+                <input type="text" name="name" value="{{ product.name }}" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Giá</label>
+                <input type="number" name="price" step="0.01" value="{{ product.price }}" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Mô tả</label>
+                <textarea name="description" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">{{ product.description }}</textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">URL hình ảnh</label>
+                <input type="text" name="image_url" value="{{ product.image_url }}" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">Danh mục</label>
+                <select name="category_id" required class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if category.id == product.category_id %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 dark:hover:bg-indigo-500">
+                Lưu thay đổi
+            </button>
+        </form>
+        <script>
+            document.getElementById('edit-product-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                try {
+                    const response = await fetch(e.target.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
+                    if (data.redirect) {
+                        setTimeout(() => window.location.href = data.redirect, 1000);
+                    }
+                } catch (error) {
+                    console.error('[E-Shop Error] Edit product failed', error);
+                    showNotificationModal('Lỗi', 'Đã xảy ra lỗi khi chỉnh sửa sản phẩm', false);
+                }
+            });
+        </script>
+    </div>
+</div>
+{% endblock %}

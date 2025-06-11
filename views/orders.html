@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Đơn hàng của bạn{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Đơn hàng của bạn</h1>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        {% if orders and orders|length > 0 %}
+        <div class="space-y-4">
+            {% for order in orders %}
+            <div class="border-b dark:border-gray-700 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                            Mã đơn hàng: #{{ order.id }}
+                        </h3>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            Ngày đặt: {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </p>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            Tổng tiền: {{ order.total_amount | int }} VNĐ
+                        </p>
+                        <p class="text-gray-600 dark:text-gray-400">
+                            Trạng thái: 
+                            <span class="font-semibold {% if order.status == 'pending' %}text-yellow-600 dark:text-yellow-400{% elif order.status == 'completed' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                                {{ order.status | capitalize }}
+                            </span>
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('order_details', order_id=order.id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-600 dark:text-gray-400 text-center">
+            Bạn chưa có đơn hàng nào. 
+            <a href="{{ url_for('index') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                Tiếp tục mua sắm
+            </a>
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

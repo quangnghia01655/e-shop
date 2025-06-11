@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Chi tiết đơn hàng #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">
+        Chi tiết đơn hàng #{{ order.id }}
+    </h1>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        {% if order %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
+                    Thông tin đơn hàng
+                </h2>
+                <p class="text-gray-600 dark:text-gray-400">
+                    <span class="font-semibold">Ngày đặt:</span> 
+                    {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+                </p>
+                <p class="text-gray-600 dark:text-gray-400">
+                    <span class="font-semibold">Tổng tiền:</span> 
+                    {{ order.total_amount | int }} VNĐ
+                </p>
+                <p class="text-gray-600 dark:text-gray-400">
+                    <span class="font-semibold">Trạng thái:</span> 
+                    <span class="{% if order.status == 'pending' %}text-yellow-600 dark:text-yellow-400{% elif order.status == 'completed' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                        {{ order.status | capitalize }}
+                    </span>
+                </p>
+                <p class="text-gray-600 dark:text-gray-400">
+                    <span class="font-semibold">Phương thức thanh toán:</span> 
+                    {{ order.payment_method | capitalize }}
+                </p>
+                <p class="text-gray-600 dark:text-gray-400">
+                    <span class="font-semibold">Địa chỉ giao hàng:</span> 
+                    {{ order.shipping_address }}
+                </p>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
+                    Sản phẩm
+                </h2>
+                {% if order_items and order_items|length > 0 %}
+                <div class="space-y-4">
+                    {% for item in order_items %}
+                    <div class="flex justify-between items-center border-b dark:border-gray-700 py-4">
+                        <div class="flex items-center space-x-4">
+                            {% if item.product.image_url %}
+                            <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}" class="w-16 h-16 object-cover rounded">
+                            {% else %}
+                            <div class="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+                                <span class="text-gray-500 dark:text-gray-400">No Image</span>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                                    {{ item.product.name }}
+                                </h3>
+                                <p class="text-gray-600 dark:text-gray-400">
+                                    Đơn giá: {{ item.price | int }} VNĐ
+                                </p>
+                                <p class="text-gray-600 dark:text-gray-400">
+                                    Số lượng: {{ item.quantity }}
+                                </p>
+                            </div>
+                        </div>
+                        <p class="text-gray-800 dark:text-gray-200 font-semibold">
+                            {{ (item.price * item.quantity) | int }} VNĐ
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-600 dark:text-gray-400">
+                    Không có sản phẩm trong đơn hàng này.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mt-6">
+            <a href="{{ url_for('orders') }}" class="inline-block bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 dark:hover:bg-gray-500">
+                Quay lại danh sách đơn hàng
+            </a>
+        </div>
+        {% else %}
+        <p class="text-gray-600 dark:text-gray-400 text-center">
+            Đơn hàng không tồn tại. 
+            <a href="{{ url_for('orders') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                Quay lại danh sách đơn hàng
+            </a>
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
