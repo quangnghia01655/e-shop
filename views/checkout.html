@@ -52,9 +52,15 @@
                             body: formData
                         });
                         const data = await response.json();
-                        showNotificationModal(data.status === 'success' ? 'Thành công' : 'Lỗi', data.message, data.status === 'success');
-                        if (data.redirect) {
-                            setTimeout(() => window.location.href = data.redirect, 1000);
+                        
+                        if (data.status === 'success') {
+                            // Hiển thị thông báo thành công
+                            showNotificationModal('Thành công', data.message, true, 1500, () => {
+                                // Chuyển hướng đến trang đơn hàng
+                                window.location.href = "{{ url_for('orders') }}";
+                            });
+                        } else {
+                            showNotificationModal('Lỗi', data.message, false);
                         }
                     } catch (error) {
                         console.error('[E-Shop Error] Checkout failed', error);
