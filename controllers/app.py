@@ -517,8 +517,10 @@ def checkout():
                 db.session.add(order_item)
                 db.session.delete(item)
         db.session.commit()
+        # Tạo thông báo cho người dùng
+        create_notification(user.id, f"Đơn hàng #{order.id} của bạn đã được đặt thành công và đang xử lý!")
         app.logger.info(f'Tạo đơn hàng thành công cho user_id: {user.id}, order_id: {order.id}, tổng tiền: {total}')
-        return jsonify({'status': 'success', 'message': 'Đặt hàng thành công!'})
+        return jsonify({'status': 'success', 'message': 'Đặt hàng thành công! Đang chuyển đến trang đơn hàng của bạn.'})
     products = [{'product': db.session.get(Product, item.product_id), 'quantity': item.quantity} for item in cart_items]
     products = [p for p in products if p['product']]
     total = sum(product['product'].price * product['quantity'] for product in products)
